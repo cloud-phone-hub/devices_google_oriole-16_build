@@ -1,0 +1,9 @@
+# note13-5G-15 Android15 AIDL Camera HAL provider service（虚拟 provider）。
+# 仅登记 internal/0 provider；device@1.0 虚拟 camera 设备由 provider 进程动态按需注册。
+
+service vendor.cdh_note13_camera_provider /vendor/bin/hw/cdh-note13-camera-provider-service
+    class hal
+    user system
+    group system camera
+    seclabel u:r:hal_camera_default:s0
+    interface aidl android.hardware.camera.provider.ICameraProvider/internal/0

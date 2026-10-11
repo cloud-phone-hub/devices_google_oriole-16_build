@@ -1,0 +1,140 @@
+{
+  "$schema": "cdh.note13-5G-15.android15.gpu.v1",
+  "device": "note13-5G-15",
+  "android": 15,
+  "approach": "interposer",
+  "approach-note": "路线 B：自写库顶替 API 面，不修改任何基座二进制。EGL Loader（frameworks/native/opengl/libs/EGL/Loader.cpp:684-699）先试 libGLES_<suffix>.so 单库全导出，找不到才退回 libEGL_/libGLESv1_CM_/libGLESv2_<suffix>.so 三件套——本模块只产出三件套，故必然走退回路径，与基座 mesa 三件一一对应。",
+
+  "source-of-truth": {
+    "model": "Redmi Note 13 5G (gold) / MTK MT6833 / Mali-G57 MC2",
+    "captured-by": "device-checker hardware.gles @ c7018f1a5b299672（run-00112，超时放宽到 90s 后成功）；与 adb shell dumpsys SurfaceFlinger 的 GLES 行交叉一致",
+    "captured-values": {
+      "vendor": "ARM",
+      "renderer": "Mali-G57 MC2",
+      "version": "OpenGL ES 3.2 v1.r49p1-03bet0.569c83bf81f68e2ce8910542c6846b7e",
+      "shadingLanguageVersion": "OpenGL ES GLSL ES 3.20"
+    },
+    "note": "targets 逐字取自上面 captured-values，不得凭记忆填写。注意真机在 checker 只申请 EGL_CONTEXT_CLIENT_VERSION=2 的情况下仍返回 GLSL ES 3.20——Mali 的 EGL 对 2.0 请求给最高支持版本，而基座 mesa 给 3.0，这是驱动行为差异。"
+  },
+  "targets": {
+    "gl_vendor": "ARM",
+    "gl_renderer": "Mali-G57 MC2",
+    "gl_version": "OpenGL ES 3.2 v1.r49p1-03bet0.569c83bf81f68e2ce8910542c6846b7e",
+    "vulkan_device_name": "Mali-G57 MC2"
+  },
+  "not-aligned": {
+    "gl_shading_language_version": "真机 'OpenGL ES GLSL ES 3.20'，云机留 mesa 真值 'OpenGL ES GLSL ES 3.00'。**曾经覆写过，是事故**：Skia 用它决定 shader 前缀版本，覆写后发 #version 320 es，mesa 编译器只支持到 3.00 → 全部 shader 编译失败 → App 内容区空白（Settings 复现）。真机能真编译 3.20，我们不能。代价是 version(3.2) 与 GLSL(3.00) 的内部矛盾保留。",
+    "gl_extensions": "真机约 109 项（含 GL_ARM_rgba8 / GL_ARM_mali_shader_binary / AEP 全套），云机过滤后 92 项。**只删不加**：删掉 GL_MESA_/GL_APPLE_/GL_ANGLE_ 这 9 项宿主与驱动指纹（分别暴露 macOS 宿主、Mesa 驱动、ANGLE）；不添加真机独有的 57 项，因为云机 virgl 实际不具备 geometry/tessellation/AEP，谎报会让真去调用的 App 崩。根因是宿主 Apple M4 只有 GL 4.1，virgl 能力封顶，非字符串层可解。",
+    "gl_version_caveat": "gl_version 是写死的字面量，与实际上下文能力（ES 3.0 级、无 AEP）脱钩。这是身份对齐的固有代价，与 pixel6-15 一致。注意 Skia 目前能容忍它（SF 与 App 均正常渲染），而 GLSL 串不能同样处理——两者的消费方式不同。"
+  },
+
+  "gl_extensions_strip_prefixes": ["GL_MESA_", "GL_APPLE_", "GL_ANGLE_"],
+  "gl_extensions_strip_note": "只做减法。这三类前缀分别暴露「驱动是 Mesa」「宿主是 macOS」「走了 ANGLE」，真机 Mali 上都不存在。绝不添加真机独有的扩展：云机 virgl 实际不具备 geometry/tessellation/AEP，谎报会让真去调用的 App 崩。少报只会让 App 走保守分支。",
+
+  "label": "u:object_r:same_process_hal_file:s0",
+
+  "interposers": [
+    {
+      "tag": "egl",
+      "base-image-path": "/lib64/egl/libEGL_mesa.so",
+      "base-soname": "libEGL_mesa.so",
+      "stage-path": "lib64/egl/libEGL_meow.so",
+      "overrides": [],
+      "note": "EGL 入口全部原样转发。EGL_VENDOR/EGL_VERSION 的真机值未采集，不覆写。"
+    },
+    {
+      "tag": "gles1",
+      "base-image-path": "/lib64/egl/libGLESv1_CM_mesa.so",
+      "base-soname": "libGLESv1_CM_mesa.so",
+      "stage-path": "lib64/egl/libGLESv1_CM_meow.so",
+      "overrides": ["glGetString", "glGetIntegerv"]
+    },
+    {
+      "tag": "gles2",
+      "base-image-path": "/lib64/egl/libGLESv2_mesa.so",
+      "base-soname": "libGLESv2_mesa.so",
+      "stage-path": "lib64/egl/libGLESv2_meow.so",
+      "overrides": ["glGetString", "glGetStringi", "glGetIntegerv"],
+      "note": "glGetStringi 只在 GLESv2/v3 存在（mesa 的 libGLESv2 导出、libGLESv1_CM 不导出），用于让 ES3.x 上下文逐条取扩展时拿到与 glGetString 一致的过滤结果；glGetIntegerv 用于让 GL_NUM_EXTENSIONS 与过滤后的条数一致，否则 Skia 会按 mesa 原始条数取到 NULL。build.py 据此定义 CDH_HAS_GLGETSTRINGI。"
+    }
+  ],
+
+  "vulkan": {
+    "base-image-path": "/lib64/hw/vulkan.virtio.so",
+    "base-soname": "vulkan.virtio.so",
+    "stage-path": "lib64/hw/vulkan.mali.so",
+    "suffix": "mali",
+    "note": "Android Vulkan loader 只经 HAL_MODULE_INFO_SYM(=\"HMI\") 的 pfnGetInstanceProcAddr 解析全部入口，故 interposer 只需包装这一个函数并覆写 vkGetPhysicalDeviceProperties{,2,2KHR} 的 deviceName；其余全部转发给基座 venus（宿主 QEMU 已带 venus=on）。"
+  },
+
+  "scan-libs": {
+    "source-root": "vendor_a",
+    "purpose": "文件扫描面对齐（pixel6-15 gpu-scan-libs 同款做法）：从官方 gold vendor 逐字节回填真机 GPU 库，只为让 stat/access/dlopen 类探测看到与真机一致的文件，不参与实际渲染——ro.hardware.egl=meow 决定 EGL Loader 只找 libGLES_*_meow.so，这些库永远不会被它加载。",
+    "excluded": [
+      {
+        "path": "lib64/egl/libGLES_meow.so",
+        "reason": "严禁回填。Loader.cpp:684 先试 libGLES_<suffix>.so 单库全导出，命中就用它并跳过三件套——回填 MTK 这个真驱动会直接顶掉我们的 interposer，而它在 virtio 上没有 /dev/mali0，结果是整机无图形。"
+      },
+      {
+        "path": "lib64/hw/vulkan.mali.so",
+        "reason": "严禁回填。会覆盖本模块产出的 vulkan.mali.so interposer。"
+      },
+      {
+        "path": "lib64/hw/gralloc.default.so",
+        "reason": "严禁回填。基座已有自己的 gralloc.default.so（52336 B，配 minigbm），换成 MTK 版会破坏图形分配器。"
+      },
+      {
+        "path": "lib64/libgralloc*.so / libgralloctypes*.so / libmtkcam_grallocutils.so",
+        "reason": "严禁回填。gralloc mapper/metadata 解码链与基座 minigbm 不兼容。"
+      },
+      {
+        "path": "lib/egl/* 与 lib/*（32 位）",
+        "reason": "不回填。本机是纯 64 位口径（abilist32 为空、ro.zygote=zygote64），32 位库无进程可加载，只为扫描面多背 37 MB 不值得。"
+      }
+    ],
+    "files": [
+      {
+        "src": "lib64/egl/libGLES_mali.so",
+        "stage-path": "lib64/egl/libGLES_mali.so",
+        "length": 53566640,
+        "sha256": "e07869390f765bbae144b5afdac14d7baf91a849bd86920de68378a621fd022f"
+      },
+      {
+        "src": "lib64/egl/libMEOW_data.so",
+        "stage-path": "lib64/egl/libMEOW_data.so",
+        "length": 202328,
+        "sha256": "5002ab488759db71f0e51468c302925e3088864d41dc018573e0d7b5c3306c15"
+      },
+      {
+        "src": "lib64/egl/libMEOW_gift.so",
+        "stage-path": "lib64/egl/libMEOW_gift.so",
+        "length": 860432,
+        "sha256": "b611d5d3dd45c6ce6dc5f1409b7abf47c2f872b8c821f74cfaaee780e4551ce2"
+      },
+      {
+        "src": "lib64/egl/libMEOW_qt.so",
+        "stage-path": "lib64/egl/libMEOW_qt.so",
+        "length": 201992,
+        "sha256": "cc78d4f9e4a5a2325d39e4df9b3661af01752ca27b7ef8d9142183bcd2b58723"
+      },
+      {
+        "src": "lib64/egl/libMEOW_trace.so",
+        "stage-path": "lib64/egl/libMEOW_trace.so",
+        "length": 592384,
+        "sha256": "884bf1ca7f9035958675e2717c1347e9ab57aed3df96bd863a1a09754e349776"
+      },
+      {
+        "src": "lib64/libOpenCL.so",
+        "stage-path": "lib64/libOpenCL.so",
+        "length": 125696,
+        "sha256": "0c0c48dccb2ef1aad211999e1ddc78f1b2bd472c7238796965b60bd713994e9d"
+      }
+    ]
+  },
+
+  "properties": {
+    "ro.hardware.egl": "meow",
+    "ro.hardware.vulkan": "mali"
+  },
+  "properties-note": "写进 baselines 的 vendor.build-prop-sets。ro.* 是 set-once，build.prop 在 init property_init 阶段加载，早于基座 init.virtio.rc 的 setprop ro.hardware.egl mesa，故 build.prop 胜出。"
+}

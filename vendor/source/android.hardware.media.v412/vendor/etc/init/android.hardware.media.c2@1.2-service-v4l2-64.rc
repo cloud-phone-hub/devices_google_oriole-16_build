@@ -1,0 +1,11 @@
+service android-hardware-media-c2-v4l2-hal-1-2 /vendor/bin/hw/android.hardware.media.c2@1.2-service-v4l2-64
+    class hal
+    interface aidl android.hardware.media.c2.IComponentStore/default
+    user media
+    group mediadrm drmrpc
+    ioprio rt 4
+    task_profiles ProcessCapacityHigh
+    setenv MESA_GLSL_CACHE_DISABLE 1
+    # 基座无 hal_codec2_default 域自动转换，显式落 mediacodec 域（同 mtk/dolby store，
+    # 见 build/vendor/build/sepolicy.py media_hal_cil）
+    seclabel u:r:mediacodec:s0

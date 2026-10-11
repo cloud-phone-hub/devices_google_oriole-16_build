@@ -1,0 +1,23 @@
+{
+  "manifest": {
+    "schema": 2,
+    "purpose": "声明 roms/ 下支持的固件与关键镜像。build 条目为构建数据源：main.py --build-id 选中后导出 CDH_* 环境变量驱动各阶段脚本与 Go 驱动；文件缺失或解析失败时脚本优雅降级为内置默认值。"
+  },
+  "device": {
+    "codename": "oriole",
+    "name": "Pixel 6",
+    "board": "oriole"
+  },
+  "build": [
+    {
+      "build-id": "oriole-cp1a.260405.005-factory-8081a8ba",
+      "android-version": "16.0.0",
+      "version": "oriole-cp1a.260405.005",
+      "factory-zip": "oriole-cp1a.260405.005-factory-8081a8ba.zip",
+      "factory-dir": "image-oriole-cp1a.260405.005",
+      "lineage-zip": "UTM-VM-lineage-23.2-20260922-UNOFFICIAL-virtio_arm64only.zip",
+      "lineage-dir": "lineage-23",
+      "lineage-version": "lineage-23.2"
+    }
+  ]
+}

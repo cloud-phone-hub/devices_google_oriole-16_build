@@ -1,0 +1,12 @@
+# 对齐真机 note13 (gold) /vendor/etc/init/vendor.dolby.media.c2-default-service-dax.rc。
+# 服务名/二进制名/user/group/ioprio/task_profiles 与真机逐字段一致；
+# 仅追加 seclabel——云机基座无 hal_codec2_default 域自动转换，显式落
+# mediacodec 域（halserverdomain 成员，见 build/vendor/build/sepolicy.py）。
+
+service vendor-dolby-media-c2-hal /vendor/bin/hw/vendor.dolby.media.c2-default-service-dax
+    class hal
+    user mediacodec
+    group camera mediadrm drmrpc
+    ioprio rt 4
+    task_profiles ProcessCapacityHigh
+    seclabel u:r:mediacodec:s0

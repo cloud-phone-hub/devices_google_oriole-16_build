@@ -1,0 +1,10 @@
+<manifest version="1.0" type="device">
+  <!-- note13-5G-15 自研 sensors HAL（虚拟 HAL）：
+       lineage 底座没有 sensors HAL，故由本服务提供 ISensors/default，
+       SensorService 据此枚举真机传感器清单（见 config/sensors.json）。 -->
+  <hal format="aidl">
+    <name>android.hardware.sensors</name>
+    <version>2</version>
+    <fqname>ISensors/default</fqname>
+  </hal>
+</manifest>

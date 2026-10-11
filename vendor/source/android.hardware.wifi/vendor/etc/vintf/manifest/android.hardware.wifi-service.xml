@@ -1,0 +1,10 @@
+<manifest version="1.0" type="device">
+  <!-- note13-5G-15 自研 wifi HAL（虚拟 HAL）：
+       lineage 底座没有 IWifi HAL，故由本服务提供 IWifi/default（IWifiChip/IWifiStaIface
+       由 IWifi 返回，不单独注册），与真机 android.hardware.wifi-service.xml 同款声明。 -->
+  <hal format="aidl">
+    <name>android.hardware.wifi</name>
+    <version>2</version>
+    <fqname>IWifi/default</fqname>
+  </hal>
+</manifest>

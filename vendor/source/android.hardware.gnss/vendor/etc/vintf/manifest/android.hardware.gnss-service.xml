@@ -1,0 +1,10 @@
+<manifest version="1.0" type="device">
+  <!-- note13-5G-15 自研 gnss HAL（虚拟 HAL）：
+       lineage 底座没有 GNSS HAL，故由本服务提供 IGnss/default，
+       LocationManager 据此创建 gps provider（真机为 gnss-default.xml 同款声明）。 -->
+  <hal format="aidl">
+    <name>android.hardware.gnss</name>
+    <version>4</version>
+    <fqname>IGnss/default</fqname>
+  </hal>
+</manifest>

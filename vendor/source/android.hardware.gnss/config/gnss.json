@@ -1,0 +1,65 @@
+{
+  "schema": "cdh.note13.android15.gnss.v1",
+  "device": "note13-5G-15",
+  "androidMajor": 15,
+  "implementationLayer": "virtual-hal",
+  "canonicalSource": "android.hardware.gnss AIDL -> GnssLocationProvider -> LocationManager GPS provider",
+  "aidlPackage": "android.hardware.gnss",
+  "aospTag": "android-15.0.0_r36",
+  "aidlVersion": 4,
+  "serviceNames": [
+    "android.hardware.gnss.IGnss/default"
+  ],
+  "requiredSubinterfaces": [
+    "IGnssBatching",
+    "IGnssGeofence",
+    "IGnssNavigationMessageInterface",
+    "IMeasurementCorrectionsInterface",
+    "IGnssMeasurementInterface",
+    "IGnssPowerIndication",
+    "IGnssPsds",
+    "IAGnss",
+    "IAGnssRil",
+    "IGnssDebug",
+    "IGnssVisibilityControl",
+    "IGnssAntennaInfo"
+  ],
+  "initCrashGuard": "Android 15 native GNSS init dereferences some returned extension binders; service methods must not return OK with a null binder for geofence, batching, navigation message, or measurement corrections.",
+  "controlDir": "/data/vendor/gps",
+  "controlFile": "/data/vendor/gps/fix",
+  "geoFixDelivery": "向 /data/vendor/gps/fix 写入 key=value（longitude/latitude/altitude/velocity/accuracy/time_ms/satellites）即注入一次 fix；HAL 每 250ms 轮询 mtime 变化并强制下发 gnssLocationCb。真机 MTK 走 vendor.mediatek.hardware.lbs 私有链路，本模块改用控制文件（宿主 fishbridge `geo fix` 的既有约定路径）。",
+  "targets": {
+    "defaultLongitude": 120.008549,
+    "defaultLatitude": 30.289452,
+    "defaultAltitudeMeters": 15.5,
+    "defaultSatellites": 7,
+    "defaultSpeedMetersPerSecond": 3.2,
+    "horizontalAccuracyMeters": 1,
+    "yearOfHw": 0,
+    "systemInfoName": "MediaTek,MT,MTK_MNLD_14_1.00,MNL_VER_24100901ALPS05_8.00_00",
+    "gnssCapabilities": 1,
+    "powerCapabilities": 1,
+    "measurementCorrectionsCapabilities": 0
+  },
+  "realDeviceObservations": {
+    "vintfManifest": "/vendor/etc/vintf/manifest/gnss-default.xml -> android.hardware.gnss v4 IGnss/default（另有 gnss-mtk.xml 声明 vendor.mediatek.hardware.gnss v2 IMtkGnss/default，属 MTK 私有扩展，未纳入本模块）",
+    "initRc": "/vendor/etc/init/android.hardware.gnss-service.mediatek.rc -> service vendor.gnss-default /vendor/bin/hw/android.hardware.gnss-service.mediatek，class hal，user system，capabilities WAKE_ALARM，group system gps",
+    "permissions": "/vendor/etc/permissions/android.hardware.location.gps.xml 声明 android.hardware.location + android.hardware.location.gps；android.hardware.location.network 来自 /vendor/etc/permissions/handheld_core_hardware.prebuilt.xml",
+    "systemInfoName": "真机 dumpsys location 的 GNSS Manager 段：GNSS Hardware Model Name: MediaTek,MT,MTK_MNLD_14_1.00,MNL_VER_24100901ALPS05_8.00_00",
+    "yearOfHw": "真机 dumpsys location 的 gps provider 段 Hardware Version: 为空（未上报有效年份），故取 0（AIDL 语义为未知）",
+    "capabilities": "真机 GNSS Manager 段 Capabilities: [SCHEDULING MSB MSA MEASUREMENTS NAVIGATION_MESSAGES LOW_POWER_MODE SATELLITE_BLOCKLIST SATELLITE_PVT MEASUREMENT_CORRECTIONS MEASUREMENT_CORRECTIONS_FOR_DRIVING ACCUMULATED_DELTA_RANGE LOS_SATS EXCESS_PATH_LENGTH REFLECTING_PLANE]（另带 signalTypes 列表）",
+    "lastKnownFix": "真机 gps provider last location=null；network provider 末次定位 30.289452,120.008549（hAcc=30.0），本模块默认 fix 的经纬度取自该实测值"
+  },
+  "packageManagerFeatures": [
+    "android.hardware.location",
+    "android.hardware.location.gps"
+  ],
+  "invariants": [
+    "真机以 AIDL android.hardware.gnss v4 注册 IGnss/default（dumpsys location 显示 gps provider 存在），本模块提供同名实例。",
+    "GNSS AIDL 快照内所有类型均为全限定名引用、无 import，故单包 android.hardware.gnss 即自包含，无跨包依赖。",
+    "gnssCapabilities 只声明 SCHEDULING(=1)：本虚拟 HAL 不产生测量值/导航电文/天线信息/PSDS，声明更多能力会让框架建出无数据可报的 provider（MEASUREMENTS/NAVIGATION_MESSAGES/ANTENNA_INFO 等）；真机能力集见 realDeviceObservations.capabilities。",
+    "控制文件落在 /data/vendor/gps（plat_file_contexts 的 /data/vendor(/.*)? -> vendor_data_file），不引入 AOSP Pixel 专属的 gnss_control_data_file 标签（lineage 基座与本机真机策略都没有该类型）。",
+    "framework 通过 LocationManager 注入（injectLocation/injectBestLocation）同样生效：HAL 保存并强制下发一次 fix。",
+    "本服务不驱动真实 GNSS 射频：不下发串口/AT 命令；卫星状态（gnssSvStatusCb）与 NMEA 由 config 的卫星数与固定星历标志合成，状态机（ENGINE_ON/SESSION_BEGIN 等）仅由 start/stop 驱动。"
+  ]
+}

@@ -1,0 +1,24 @@
+# note13-5G-15 自研 wifi HAL（虚拟 HAL）。
+#
+# lineage 底座有 wificond + supplicant/hostapd HAL，但没有 IWifi HAL：vendor VINTF 未声明
+# android.hardware.wifi.IWifi，WifiService 因此拿不到 chip/iface，Wi-Fi 不可用。
+# 本服务接管 android.hardware.wifi.IWifi/default，按内核模块 mac80211_hwsim 的 scan_profile
+# 合成扫描结果与连接 BSSID（nl80211 仅用于查询连接态），不驱动真实射频。
+#
+# 说明：v8 起 wlan0 由 mac80211_hwsim 的 radio 提供（不再用 setup_wifi/virt_wifi）；
+# 假扫描（注入假 AP beacon）与假连接（auth/assoc 伪响应）、数据面直桥（以太帧 <-> hvc10）
+# 都在 hwsim 内核内完成，本服务只负责下发档位并上报状态。
+service vendor.cdh_note13_wifi /vendor/bin/hw/android.hardware.wifi-service.cdh-note13
+    class hal
+    capabilities NET_ADMIN NET_RAW SYS_MODULE
+    user wifi
+    group wifi gps inet net_admin net_raw
+    seclabel u:r:hal_wifi_default:s0
+    interface aidl android.hardware.wifi.IWifi/default
+    disabled
+
+on post-fs-data
+    # 扫描档位参数由内核模块以 root:root 0644 注册，而本服务以 wifi 用户运行：
+    # 放开 DAC 写位即可，访问控制由 SELinux 兜底（仅 hal_wifi_default 有 write allow）。
+    chmod 0666 /sys/module/mac80211_hwsim/parameters/scan_profile
+    start vendor.cdh_note13_wifi

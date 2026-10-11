@@ -1,0 +1,98 @@
+import /vendor/etc/init/hw/init.low_performance.rc
+
+# Block devices
+on early-fs
+    symlink /dev/block/by-name/BIOS /dev/block/by-name/BIOS_a
+    symlink /dev/block/by-name/BIOS /dev/block/by-name/BIOS_b
+    symlink /dev/block/by-name/EFI /dev/block/by-name/EFI_a
+    symlink /dev/block/by-name/EFI /dev/block/by-name/EFI_b
+
+# Boot manager
+service vendor.grub-editenv-set-android_theme /vendor/bin/grub-editenv /mnt/vendor/persist/grubenv set android_theme=${persist.sys.theme}
+    user system
+    group system
+    disabled
+    oneshot
+
+on property:persist.sys.theme=*
+    start vendor.grub-editenv-set-android_theme
+
+# Display
+on early-init
+    setprop ro.sf.lcd_density ${ro.boot.lcd_density:-160}
+
+# DLKM Loader
+service vendor.dlkm_loader /vendor/bin/dlkm_loader
+    class main
+    user root
+    group root system
+    disabled
+    oneshot
+
+# CDH: Remote KeyMint 门控（本文件为 build/vendor/patch 覆盖件，追加于底包之后）。
+# 实例 24-28 实测：root 级 keymint rc 与两个 rc 的 `on late-fs` 块都未触发（原因待考），
+# 而 `on post-fs` 稳定触发（dlkm_loader 等）。故把 /dev/hvc3 就绪门控直接放
+# post-fs 内、`start vendor.dlkm_loader` 之后（实例 22 的 wait+start 正是在此
+# post-fs 上下文中运行过；sepolicy v2 已放行 vendor_init getattr，hvc3 出现即返回）
+# v3 顺延 virtconsole 布局：keymint = hvc3（Cuttlefish 基线编号；hvc0/1 留给固件 console，hvc2 空置预留）
+on post-fs
+    # 内核固件搜索路径保持底包写法 /vendor/firmware_mnt/（= firmware 分区挂载点，云机
+    # 该分区为空）。此处不指向 /vendor/firmware/（那里有 regulatory.db）是既定行为，
+    # 与底包一致；cfg80211 取不到 regulatory.db（error -2）。
+    # 注：曾怀疑"加载 regulatory.db 触发 8 CPU soft lockup"，实测（2026-10-11）改回
+    # 本行后 lockup 依旧复现，该归因已证伪。lockup 是 cdh_rx_thread 侧的独立问题，
+    # 见记录 [[project-oriole-16-bringup]]。
+    write /sys/module/firmware_class/parameters/path /vendor/firmware_mnt/
+    start vendor.dlkm_loader
+    write /dev/kmsg "CDH-KM-V5-POSTFS\n"
+    wait /dev/hvc3 30
+    write /dev/kmsg "CDH-KM-V5-HVC3READY\n"
+    start vendor.keymint-default
+
+# Graphics
+on property:ro.vendor.graphics=mesa
+    setprop ro.hardware.egl mesa
+
+on property:ro.vendor.graphics=mesa_swrast
+    setprop ro.hardware.egl mesa
+    setprop ro.hardware.vulkan lvp
+    setprop ro.opengles.version 196610
+    setprop ro.surface_flinger.native_window_buffers_format 5
+    setprop vendor.mesa.android.no.kms.swrast true
+    setprop vendor.mesa.libgl.always.software true
+
+on property:ro.vendor.graphics=swiftshader
+    setprop ro.cpuvulkan.version 4202496
+    setprop ro.hardware.egl angle
+    setprop ro.hardware.vulkan pastel
+    setprop ro.opengles.version 196609
+    setprop ro.surface_flinger.native_window_buffers_format 5
+
+on early-boot && property:ro.boot.hwui_renderer=*
+    setprop debug.hwui.renderer ${ro.boot.hwui_renderer}
+
+on early-boot && property:ro.vendor.graphics.gpu=vkms
+    setprop ro.vendor.graphics ${ro.boot.graphics:-swiftshader}
+
+# Suspend blocker
+service suspend_blocker /vendor/bin/suspend_blocker
+    class early_hal # Start together with system_suspend HAL
+    group system
+    user root
+
+# VirtWifi
+service setup_wifi /vendor/bin/setup_wifi --interface=${ro.vendor.virtwifi.port}
+    override
+    disabled
+    oneshot
+    user root
+    group root
+
+on post-fs-data && property:ro.boot.wifi_impl=virt_wifi
+    start setup_wifi
+
+# Wi-Fi
+on early-boot
+    mkdir /data/vendor/wifi 0770 wifi wifi
+    mkdir /data/vendor/wifi/wpa 0770 wifi wifi
+    mkdir /data/vendor/wifi/wpa/sockets 0770 wifi wifi

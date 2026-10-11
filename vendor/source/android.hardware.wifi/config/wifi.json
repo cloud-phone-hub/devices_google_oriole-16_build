@@ -1,0 +1,47 @@
+{
+  "schema": "cdh.note13.android15.wifi.v1",
+  "device": "note13-5G-15",
+  "androidMajor": 15,
+  "aospTag": "android-15.0.0_r36",
+  "aidlVersion": 2,
+  "commonAidlVersion": 1,
+  "serviceName": "android.hardware.wifi.IWifi/default",
+  "interfaceName": "wlan0",
+  "backingInterface": "eth0",
+  "defaultEnabled": true,
+  "hostChannel": "/dev/hvc9",
+  "scanProfilePath": "/sys/module/mac80211_hwsim/parameters/scan_profile",
+  "hostProtocolVersion": 1,
+  "hostFrameMax": 1048576,
+  "hostReconnectDelayMs": 1000,
+  "hostReadTimeoutMs": 30000,
+  "hostProtocol": {
+    "framing": "[4B 大端长度][UTF-8 JSON]，与事件通道（v3 布局 hvc7）同约定；单帧上限 1 MiB",
+    "guestToHost": [
+      "{\"type\":\"hello\",\"role\":\"guest\",\"version\":1}  连接后主动上报",
+      "{\"type\":\"scan_profile_ack\",\"seq\":N,\"ok\":true|false,\"detail\":\"...\"}  档位落盘结果",
+      "{\"type\":\"pong\"}  ping 应答"
+    ],
+    "hostToGuest": [
+      "{\"type\":\"scan_profile\",\"seq\":N,\"profile\":\"<hex-SSID,BSSID,freq,RSSI,security;...>\"}  AP 档位",
+      "{\"type\":\"ping\"}  心跳"
+    ]
+  },
+  "realDeviceObservations": {
+    "vintfManifest": "/vendor/etc/vintf/manifest/android.hardware.wifi-service.xml -> android.hardware.wifi v2 IWifi/default（另有 hostapd v2 IHostapd/default、supplicant v3 ISupplicant/default）",
+    "initRc": "/vendor/etc/init/android.hardware.wifi-service-lazy.rc -> service vendor.wifi_hal_legacy /vendor/bin/hw/android.hardware.wifi-service-lazy，interface aidl android.hardware.wifi.IWifi/default，oneshot/disabled/class hal，capabilities NET_ADMIN NET_RAW SYS_MODULE，user wifi，group wifi gps",
+    "guestBaseline": "lineage 底座已有 wificond + supplicant/hostapd HAL（/vendor/etc/vintf/manifest/android.hardware.wifi.{supplicant,hostapd}.xml），但没有 IWifi HAL：vendor VINTF 无 android.hardware.wifi-service.xml，vendor_sepolicy.cil 里 hal_wifi_default 只有 entrypoint 一条规则",
+    "kernelModule": "note13 内核 mac80211_hwsim（v8 改造）提供 module param scan_profile，语义 'semicolon-separated hex-SSID,BSSID,frequency,RSSI,security records'（与 cdh_virt_wifi 同格式，主 AP 仍是 VirtWifi/open）；hwsim 据此注入假 AP beacon 供 supplicant 扫描，并就地伪响应 auth/assoc 完成假连接，数据面由 hwsim 内核直桥（netdev 层以太帧 <-> /dev/hvc10）",
+    "interfaceSetup": "v8：wlan0 由内核 mac80211_hwsim 的 radio 自动创建（hwsim 出厂 radios=2），底座 setup_wifi/virt_wifi 不再使用（ro.boot.wifi_impl 保持为空）",
+    "backingInterface": "取自底座属性 ro.vendor.virtwifi.port=eth0（guest 当前以太网出口）"
+  },
+  "invariants": [
+    "真机以 AIDL android.hardware.wifi v2 注册 IWifi/default，本模块提供同名实例（IWifiChip/IWifiStaIface 由 IWifi 返回，不单独注册服务，故 VINTF 只声明 IWifi/default）。",
+    "android.hardware.wifi 依赖 android.hardware.wifi.common（OuiKeyedData 等）与平台 parcelable android.os.PersistableBundle：AIDL 编译用 -I 同时包含两个包、并用 -p framework-ndk.aidl 引用预编译的 PersistableBundle。",
+    "HAL 不驱动真实射频：芯片/接口能力与连接 BSSID 来自内核模块 scan_profile（/sys/module/mac80211_hwsim/parameters/scan_profile）与 hwsim 假扫描/假连接，nl80211 仅用于查询内核侧的连接态。",
+    "v8：wlan0 由 mac80211_hwsim 提供（radio 默认创建），不再依赖 setup_wifi/virt_wifi；eth0 仍为宿主出口（wifi 流量由 hwsim 内核直桥走 /dev/hvc10，不占用 eth0）。",
+    "扫描档位注入：向 /sys/module/mac80211_hwsim/parameters/scan_profile 写入档位串即生效（本模块仍为该 sysfs 节点建独立标签 cdh_wifi_scan_param 并把写权限给 console 域 pioneer）。",
+    "宿主通道（本次新增）：host 侧 wifi-host-service 经 hvc9 下发 AP 档位（[4B 大端长度][JSON]），guest 由本 HAL 的 cdh_wifi::HostChannel 后台线程收帧、用 ParseScanModel 校验后写 scan_profile，校验失败回 ack ok=false 并保留旧档位。",
+    "通道接线：QEMU 以 unix socket（<实例>/channels/wifi.sock，server=on,wait=off）承载 hvc9，host 服务作为 client 连接；guest 打开 /dev/hvc9（独立标签 cdh_wifi_channel）读写。"
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "schema": "cdh.note13-5G-15.android15.thermal.v1",
+  "device": "note13-5G-15",
+  "androidMajor": 15,
+  "aidlVersion": 2,
+  "aospTag": "android-15.0.0_r36",
+  "source": "真机 Redmi Note 13 5G (OS3.0.9.0.VNQCNXM)：dumpsys thermalservice 的 HAL 段（HAL Ready / Current temperatures from HAL / Temperature static thresholds from HAL / Current cooling devices from HAL）",
+  "canonicalSource": "android.hardware.thermal AIDL -> ThermalManagerService -> PowerManager.getThermalHeadroom()",
+  "implementationLayer": "virtual-hal",
+  "serviceNames": [
+    "android.hardware.thermal.IThermal/default"
+  ],
+  "frameworkFormulaSource": "https://android.googlesource.com/platform/frameworks/base/+/android-15.0.0_r36/services/core/java/com/android/server/power/ThermalManagerService.java",
+  "targets": {
+    "skinTemperatureName": "SKIN",
+    "skinTemperatureCelsius": 27.843,
+    "skinSevereThresholdCelsius": 50,
+    "throttlingStatus": "NONE",
+    "model": {
+      "loadSource": "/proc/stat",
+      "sampleIntervalMillis": 1000,
+      "maximumTemperatureCelsius": 50,
+      "heatingTimeConstantSeconds": 20,
+      "coolingTimeConstantSeconds": 45
+    },
+    "temperatures": [
+      {
+        "type": 0,
+        "name": "CPU",
+        "value": 29.174,
+        "hot": [null, null, null, 85, 90, 100, 117],
+        "cold": [null, null, null, null, null, null, null]
+      },
+      {
+        "type": 1,
+        "name": "GPU",
+        "value": 29.174,
+        "hot": [null, null, null, 85, 90, 100, 117],
+        "cold": [null, null, null, null, null, null, null]
+      },
+      {
+        "type": 2,
+        "name": "BATTERY",
+        "value": 26.0,
+        "hot": [null, null, null, 50, 55, 59, 60],
+        "cold": [null, null, null, null, null, null, null]
+      },
+      {
+        "type": 3,
+        "name": "SKIN",
+        "value": 27.843,
+        "hot": [null, 43, 45, 50, 70, 80, 90],
+        "cold": [null, null, null, null, null, null, null]
+      },
+      {
+        "type": 5,
+        "name": "POWER_AMPLIFIER",
+        "value": 28.128,
+        "hot": [null, null, null, 68, 90, 100, 110],
+        "cold": [null, null, null, null, null, null, null]
+      },
+      {
+        "type": 9,
+        "name": "NPU",
+        "value": 29.174,
+        "hot": [null, null, null, 85, 90, 100, 117],
+        "cold": [null, null, null, null, null, null, null]
+      },
+      {
+        "type": 10,
+        "name": "TPU",
+        "value": 29.174,
+        "hot": [null, null, null, 85, 90, 100, 117],
+        "cold": [null, null, null, null, null, null, null]
+      },
+      {
+        "type": 13,
+        "name": "SOC",
+        "value": 29.174,
+        "hot": [null, null, null, 85, 90, 100, 117],
+        "cold": [null, null, null, null, null, null, null]
+      }
+    ],
+    "coolingDevices": [
+      {
+        "type": 3,
+        "name": "devfreq-13000000.mali",
+        "value": 0
+      }
+    ]
+  },
+  "invariants": [
+    "Temperature.name 必须与 TemperatureThreshold.name 逐一对应，否则框架 getThermalHeadroom 返回 NaN。",
+    "thermalHeadroom 由框架（ThermalManagerService）按 SKIN 温度与 SKIN 阈值现算，不在本 HAL 配置里固化。",
+    "服务采样 /proc/stat 的 CPU 累计计数，对 SKIN 施加有界一阶升/降温模型（其余类型保持基线值）。",
+    "severity 取自各类型的 hot 阈值；模型上界 50°C 使其在持续满载下最高到 SEVERE，不模拟真实风扇/主动散热。"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "cdh.note13.android15.lights.v1",
+  "device": "note13-5G-15",
+  "androidMajor": 15,
+  "source": "real Redmi Note13 5G Android15 (OS3.0.9.0.VNQCNXM) dumpsys lights + vendor VINTF manifest lights-mtk-default.xml",
+  "canonicalSource": "android.hardware.light.ILights/default -> LightsService -> LightsManager API",
+  "implementationLayer": "virtual-hal",
+  "aidlVersion": 2,
+  "aospTag": "android-15.0.0_r36",
+  "aospReferences": [
+    "https://android.googlesource.com/platform/hardware/interfaces/+/android-15.0.0_r36/light/aidl/aidl_api/android.hardware.light/2/android/hardware/light/ILights.aidl",
+    "https://android.googlesource.com/platform/hardware/interfaces/+/android-15.0.0_r36/light/aidl/aidl_api/android.hardware.light/2/android/hardware/light/HwLight.aidl",
+    "https://android.googlesource.com/platform/system/sepolicy/+/android-15.0.0_r36/vendor/hal_light_default.te"
+  ],
+  "serviceNames": [
+    "android.hardware.light.ILights/default"
+  ],
+  "targets": {
+    "serviceKindOnRealNote13": "aidl",
+    "realHalBinary": "/vendor/bin/hw/android.hardware.lights-service.mediatek",
+    "realHalRc": "/vendor/etc/init/lights-mtk-default.rc",
+    "lights": [
+      { "id": 0, "ordinal": 0, "type": "BACKLIGHT" },
+      { "id": 1, "ordinal": 0, "type": "KEYBOARD" },
+      { "id": 2, "ordinal": 0, "type": "BUTTONS" },
+      { "id": 3, "ordinal": 0, "type": "BATTERY" },
+      { "id": 4, "ordinal": 0, "type": "NOTIFICATIONS" },
+      { "id": 5, "ordinal": 0, "type": "ATTENTION" },
+      { "id": 6, "ordinal": 1, "type": "BLUETOOTH" },
+      { "id": 7, "ordinal": 1, "type": "WIFI" }
+    ]
+  },
+  "invariants": [
+    "真机 dumpsys lights 报 'Service: aidl (android.hardware.light.ILights$Stub$Proxy@...)', 即 MTK HAL 已按 AIDL 形态注册; 本模块提供同名的 android.hardware.light.ILights/default。",
+    "id/ordinal 逐条取自真机 dumpsys lights: 8 盏灯, id 0..5 的 ordinal=0, id 6/7 的 ordinal=1; 不要按 type 去重推导 ordinal。",
+    "type 取自 MTK HAL 的同源实现 (vendor/mediatek/proprietary/hardware/liblights/aidl/default/Lights.cpp, AOSP HIDL 时代 8 类型的顺序), 与 LightType 枚举 0..7 顺序一致; 真机 dumpsys 不打印 type, 故以该顺序固化。",
+    "真机 HAL 只声明 android.hardware.light.ILights/default 一个实例 (lights-mtk-default.xml), 无第二个 instance。",
+    "CDH 虚拟 lights HAL 是状态接收器: setLightState 只记录, 不驱动宿主屏幕亮度 / guest sysfs LED。"
+  ]
+}

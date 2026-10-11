@@ -1,0 +1,16 @@
+# note13-5G-15 自研 thermal HAL（虚拟 HAL）。
+#
+# lineage 底座没有 thermal HAL：/vendor/bin/hw 无 thermal 服务、vendor VINTF 也未声明
+# IThermal/default，ThermalManagerService 因此报 "HAL Ready: false"、headroom 全 0。
+# 本服务接管 android.hardware.thermal.IThermal/default，上报 note13 真机的温度传感器/
+# 阈值/冷却设备（config/thermal.json），并按 /proc/stat 的 CPU 负载驱动 SKIN 温度模型。
+service vendor.cdh_note13_thermal /vendor/bin/hw/android.hardware.thermal-service.cdh-note13
+    class hal
+    user system
+    group system
+    seclabel u:r:hal_thermal_default:s0
+    interface aidl android.hardware.thermal.IThermal/default
+    disabled
+
+on post-fs-data
+    start vendor.cdh_note13_thermal

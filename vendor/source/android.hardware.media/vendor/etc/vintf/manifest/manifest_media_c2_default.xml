@@ -1,0 +1,8 @@
+<manifest version="1.0" type="device">
+    <!-- AIDL fragment：MTK store 注册 default1（default 让给 v4l2，见 android.hardware.media.v412） -->
+    <hal format="aidl">
+      <name>android.hardware.media.c2</name>
+      <version>1</version>
+      <fqname>IComponentStore/default1</fqname>
+    </hal>
+</manifest>

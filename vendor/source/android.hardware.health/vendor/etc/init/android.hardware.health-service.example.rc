@@ -1,0 +1,8 @@
+service vendor.health-default /vendor/bin/hw/android.hardware.health-service.example
+    class hal
+    user system
+    group system
+    capabilities WAKE_ALARM BLOCK_SUSPEND
+    file /dev/kmsg w
+
+# 云机无充电模式（charger mode），真机 rc 里的 vendor.charger 服务不启用。

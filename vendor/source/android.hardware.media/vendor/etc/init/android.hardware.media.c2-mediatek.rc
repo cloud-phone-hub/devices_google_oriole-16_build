@@ -1,0 +1,14 @@
+# 对齐真机 note13 (gold) /vendor/etc/init/android.hardware.media.c2-mediatek.rc。
+# 服务名/二进制名/user/group/ioprio/task_profiles 与真机逐字段一致；
+# 仅追加 seclabel——云机基座无 hal_codec2_default 域自动转换，显式落
+# mediacodec 域（halserverdomain 成员，见 build/vendor/build/sepolicy.py）。
+# 真机无 interface aidl 行（AIDL 由二进制 AServiceManager_addService 注册）。
+
+service android-hardware-media-c2-hal /vendor/bin/hw/android.hardware.media.c2-mediatek
+    class hal
+    user mediacodec
+    group camera drmrpc mediadrm media_rw sdcard_rw media system audio inet net_bt net_bt_admin net_bw_acct sdcard_r
+    ioprio rt 4
+    task_profiles ProcessCapacityHigh HighPerformance
+    seclabel u:r:mediacodec:s0
+    interface aidl android.hardware.media.c2.IComponentStore/default1

@@ -1,0 +1,122 @@
+{
+    "schema": "cdh.note13-5G-15.android15.camera.v1",
+    "device": "note13-5G-15",
+    "androidMajor": 15,
+    "aospTag": "android-15.0.0_r36",
+    "providerAidlVersion": 3,
+    "deviceAidlVersion": 3,
+    "commonAidlVersion": 1,
+    "metadataAidlVersion": 3,
+    "graphicsCommonAidlVersion": 5,
+    "serviceName": "android.hardware.camera.provider.ICameraProvider/internal/0",
+    "providerInstance": "internal/0",
+    "canonicalSource": "android.hardware.camera.provider AIDL -> CameraService -> CameraManager/legacy camera API",
+    "targets": {
+        "cameraCount": 2,
+        "legacyCameraCount": 2,
+        "aidlDeviceNames": [
+            "device@1.0/internal/0",
+            "device@1.0/internal/1"
+        ],
+        "packageFeaturesAfterHAL": [
+            "android.hardware.camera",
+            "android.hardware.camera.any",
+            "android.hardware.camera.autofocus",
+            "android.hardware.camera.flash",
+            "android.hardware.camera.front"
+        ],
+        "logicalPhysicalCameraIds": {}
+    },
+    "cameras": [
+        {
+            "id": "0",
+            "lensFacing": "back",
+            "sensorOrientation": 90,
+            "flashInfoAvailable": true,
+            "infoSupportedHardwareLevel": "level_3",
+            "lensInfoAvailableApertures": [
+                1.7
+            ],
+            "lensInfoAvailableFocalLengths": [
+                5.31
+            ],
+            "lensInfoAvailableOpticalStabilization": [
+                "off"
+            ],
+            "sensorPixelArraySize": {
+                "width": 4000,
+                "height": 3000
+            },
+            "sensorInfoActiveArraySize": {
+                "left": 0,
+                "top": 0,
+                "right": 4000,
+                "bottom": 3000
+            },
+            "sensorInfoPhysicalSize": {
+                "width": 7.68,
+                "height": 5.76
+            },
+            "sensorInfoSensitivityRange": {
+                "min": 50,
+                "max": 12800
+            },
+            "sensorInfoMaxFrameDuration": 30000000000,
+            "sensorInfoColorFilterArrangement": "gbrg",
+            "scalerAvailableMaxDigitalZoom": 10,
+            "legacy": {
+                "id": 0,
+                "facing": "back",
+                "orientation": 90,
+                "canDisableShutterSound": false,
+                "maxPictureWidth": 4000,
+                "maxPictureHeight": 3000
+            }
+        },
+        {
+            "id": "1",
+            "lensFacing": "front",
+            "sensorOrientation": 270,
+            "flashInfoAvailable": false,
+            "infoSupportedHardwareLevel": "level_3",
+            "lensInfoAvailableApertures": [
+                2.4
+            ],
+            "lensInfoAvailableFocalLengths": [
+                3.26
+            ],
+            "lensInfoAvailableOpticalStabilization": [
+                "off"
+            ],
+            "sensorPixelArraySize": {
+                "width": 2304,
+                "height": 1728
+            },
+            "sensorInfoActiveArraySize": {
+                "left": 0,
+                "top": 0,
+                "right": 2304,
+                "bottom": 1728
+            },
+            "sensorInfoPhysicalSize": {
+                "width": 4.64,
+                "height": 3.48
+            },
+            "sensorInfoSensitivityRange": {
+                "min": 50,
+                "max": 3200
+            },
+            "sensorInfoMaxFrameDuration": 278443000,
+            "sensorInfoColorFilterArrangement": "rggb",
+            "scalerAvailableMaxDigitalZoom": 10,
+            "legacy": {
+                "id": 1,
+                "facing": "front",
+                "orientation": 270,
+                "canDisableShutterSound": false,
+                "maxPictureWidth": 2304,
+                "maxPictureHeight": 1728
+            }
+        }
+    ]
+}

@@ -1,0 +1,18 @@
+# note13-5G-15：SoC 身份对齐（对齐真机 gold vendor 的 chipinfo 链路）。
+#
+# 真机：/vendor/bin/chipinfo（域 chipinfo）读 MTK sysfs 派生 ro.vendor.soc.*，
+# 再由本 rc 的 post-fs-data 段派生 ro.soc.model / ro.soc.manufacturer。
+#
+# 云机：virtio 内核无 /sys/devices/soc0 与 device-tree，且 vendor_mtk_soc_prop
+# 属 vendor_restricted_property_type（plat neverallow 禁止 init/vendor_init set），
+# 故改用等价二进制 /vendor/bin/chipinfo（同路径、同域 chipinfo_exec→chipinfo）
+# 在 early-init 写入硬编身份值。
+#
+# 与官方 rc 的差异：**不带 post-fs-data 段**。ro.soc.model / ro.soc.manufacturer
+# 的上下文是 plat 的 soc_prop（init 可直接 set，不触 neverallow），已由
+# /vendor/build.prop 提供并通过 device-checker 复核；官方那段
+# `wait_for_prop ro.vendor.soc.model_ready 1` 在写入失败时会永久阻塞 post-fs-data，
+# 对云机是纯风险，故不引入（本 rc 只负责 ro.vendor.soc.*）。
+
+on early-init
+    exec_background - system system -- /vendor/bin/chipinfo

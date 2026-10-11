@@ -1,0 +1,59 @@
+{
+  "schema": "cdh.note13.android15.codec2.v1",
+  "device": "note13-5g-15",
+  "androidMajor": 15,
+  "source": {
+    "kind": "real-device-dumpsys-media-player",
+    "note": "component 清单对齐 note13 真机（gold 2312DRAABC）：default=MTK store 15 组件，default9=Dolby store 2 组件"
+  },
+  "profileLevel": {
+    "note": "profiles/levels 为 C2Config::profile_t / level_t 数值（见 frameworks/av/media/codec2/core/include/C2Config.h），由真机 dumpsys media.player 的 profile/levels（SDK 值）经 Codec2Mapper 反查得到；store 在 IConfigurable::querySupportedValues 上按组件应答，framework 才能用真实 level 表算能力（否则退回 mime 默认上限，能力塌缩且 c2.mtk.avc.encoder 会被整条丢弃）",
+    "examples": {
+      "20480": "PROFILE_AVC_BASELINE",
+      "20482": "PROFILE_AVC_MAIN",
+      "20484": "PROFILE_AVC_HIGH",
+      "20494": "LEVEL_AVC_5",
+      "20495": "LEVEL_AVC_5_1",
+      "24576": "PROFILE_HEVC_MAIN",
+      "24834": "LEVEL_HEVC_HIGH_5",
+      "24835": "LEVEL_HEVC_HIGH_5_1"
+    }
+  },
+  "serviceNames": [
+    "android.hardware.media.c2.IComponentStore/default1",
+    "android.hardware.media.c2.IComponentStore/default9"
+  ],
+  "stores": [
+    {
+      "instance": "default1",
+      "owner": "default1",
+      "description": "MTK 硬件 C2 store（假登记，default 实例让给 v4l2 硬件 store：android.hardware.media.v412）",
+      "components": [
+        {"name": "c2.mtk.hevc.decoder", "domain": "video", "kind": "decoder", "mediaType": "video/hevc", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.HEVC"], "profiles": [24576, 24578, 24577], "levels": [24835]},
+        {"name": "c2.mtk.hevc.decoder.secure", "domain": "video", "kind": "decoder", "mediaType": "video/hevc", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.HEVC.secure"], "profiles": [24576, 24578, 24577], "levels": [24835]},
+        {"name": "c2.mtk.mpeg4.decoder", "domain": "video", "kind": "decoder", "mediaType": "video/mp4v-es", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.MPEG4"], "profiles": [12297, 12308], "levels": [16393]},
+        {"name": "c2.mtk.mpeg2.decoder", "domain": "video", "kind": "decoder", "mediaType": "video/mpeg2", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.MPEG2"], "profiles": [4097], "levels": [4099]},
+        {"name": "c2.mtk.h263.decoder", "domain": "video", "kind": "decoder", "mediaType": "video/3gpp", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.H263"], "profiles": [12288], "levels": [12291, 12292, 12293, 12294, 12295]},
+        {"name": "c2.mtk.avc.decoder", "domain": "video", "kind": "decoder", "mediaType": "video/avc", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.AVC"], "profiles": [20480, 20481, 20482, 20484, 20487], "levels": [20495]},
+        {"name": "c2.mtk.avc.decoder.secure", "domain": "video", "kind": "decoder", "mediaType": "video/avc", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.AVC.secure"], "profiles": [20480, 20481, 20482, 20484, 20487], "levels": [20495]},
+        {"name": "c2.mtk.heif.decoder", "domain": "video", "kind": "decoder", "mediaType": "image/vnd.android.heic", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.HEIF"], "profiles": [], "levels": []},
+        {"name": "c2.mtk.vpx.decoder", "domain": "video", "kind": "decoder", "mediaType": "video/x-vnd.on2.vp8", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.VPX"], "profiles": [40960], "levels": [1]},
+        {"name": "c2.mtk.vp9.decoder", "domain": "video", "kind": "decoder", "mediaType": "video/x-vnd.on2.vp9", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.VP9"], "profiles": [28672, 28673, 28674], "levels": [28680]},
+        {"name": "c2.mtk.vp9.decoder.secure", "domain": "video", "kind": "decoder", "mediaType": "video/x-vnd.on2.vp9", "rank": 512, "aliases": ["OMX.MTK.VIDEO.DECODER.VP9.secure"], "profiles": [28672, 28673, 28674], "levels": [28680]},
+        {"name": "c2.mtk.avc.encoder", "domain": "video", "kind": "encoder", "mediaType": "video/avc", "rank": 512, "aliases": ["OMX.MTK.VIDEO.ENCODER.AVC"], "profiles": [20480, 20482, 20484], "levels": [20494]},
+        {"name": "c2.mtk.avc.encoder.secure", "domain": "video", "kind": "encoder", "mediaType": "video/avc", "rank": 512, "aliases": [], "profiles": [20480, 20482, 20484], "levels": [20494]},
+        {"name": "c2.mtk.hevc.encoder", "domain": "video", "kind": "encoder", "mediaType": "video/hevc", "rank": 512, "aliases": ["OMX.MTK.VIDEO.ENCODER.HEVC"], "profiles": [24576], "levels": [24834]},
+        {"name": "c2.mtk.heif.encoder", "domain": "video", "kind": "encoder", "mediaType": "image/vnd.android.heic", "rank": 512, "aliases": [], "profiles": [], "levels": []}
+      ]
+    },
+    {
+      "instance": "default9",
+      "owner": "default9",
+      "description": "Dolby AC3/EAC3/AC4 audio C2 store（假登记，对齐真机 vendor.dolby.media.c2 / dolby.media.c2-default-service-dax）",
+      "components": [
+        {"name": "c2.dolby.eac3.decoder", "domain": "audio", "kind": "decoder", "mediaType": "audio/eac3", "rank": 8, "aliases": [], "profiles": [], "levels": []},
+        {"name": "c2.dolby.ac4.decoder", "domain": "audio", "kind": "decoder", "mediaType": "audio/ac4", "rank": 8, "aliases": ["OMX.dolby.ac4.decoder"], "profiles": [], "levels": []}
+      ]
+    }
+  ]
+}

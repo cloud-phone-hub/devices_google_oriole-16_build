@@ -1,0 +1,10 @@
+<manifest version="1.0" type="device">
+  <!-- note13-5G-15 自研 thermal HAL（虚拟 HAL）：
+       lineage 底座没有 thermal HAL，故由本服务提供 IThermal/default，
+       ThermalManagerService 据此获得温度/阈值与 thermal headroom 依据。 -->
+  <hal format="aidl">
+    <name>android.hardware.thermal</name>
+    <version>2</version>
+    <fqname>IThermal/default</fqname>
+  </hal>
+</manifest>

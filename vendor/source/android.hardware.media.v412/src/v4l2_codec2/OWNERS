@@ -1,0 +1,5 @@
+adelva@google.com
+
+# Note that AOSP _is_ the upstream for this project,
+# so the janitors are not generally useful.
+include platform/system/core:/janitors/OWNERS #{LAST_RESORT_SUGGESTION}

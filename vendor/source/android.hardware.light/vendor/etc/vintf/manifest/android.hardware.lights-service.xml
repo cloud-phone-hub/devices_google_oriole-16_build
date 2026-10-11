@@ -1,0 +1,10 @@
+<manifest version="1.0" type="device">
+  <!-- note13-5G-15 自研 lights HAL（虚拟 HAL）：
+       lineage 底座没有 lights HAL，故由本服务提供 ILights/default，
+       LightsService 据此枚举 id/ordinal/type 八盏灯（真机 MTK lights HAL 同款清单）。 -->
+  <hal format="aidl">
+    <name>android.hardware.light</name>
+    <version>2</version>
+    <fqname>ILights/default</fqname>
+  </hal>
+</manifest>

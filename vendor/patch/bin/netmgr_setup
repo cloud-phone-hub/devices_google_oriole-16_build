@@ -1,0 +1,100 @@
+#!/system/bin/sh
+# note13-5G-15 网络初始化（对齐真机 gold）。
+#
+# 管理网卡（net0 SLIRP 10.0.2.0/24）**不再**移入私有 netns：真机上 adb shell 与
+# 普通 app 同在主 netns，应能看到 ccmni2/wlan0 等网卡；而 adb shell 的 netns 取决于
+# adbd 所在 netns，因此这里把 /mnt/run/adb_net 直接指向 init 的主 netns——guest-daemon
+# 仍按原逻辑 setns 后 exec APEX adbd（Rust 侧零改动），效果是 adbd 落在主 netns。
+#
+# 管理网卡改名 mgmt0（非 eth\d）：guest 的 EthernetService 名字过滤器是
+# (usb|eth)\d+（dumpsys ethernet），保留 eth0 会被框架接管成"以太网网络"；
+# 改名后框架不碰它。不配默认路由：net0 是 restrict=on 的管理通道（无公网），
+# 配默认路由只会干扰 Android 的默认网络选择（真机也没有这号路由）。
+#
+# 时序（netmgr.rc post-fs）：
+#   setup（exec）:    /mnt/run/adb_net -> init 主 netns（供 daemon setns）
+#   configure（exec）: 主 netns 配管理网卡（mgmt0，10.0.2.15/24，无默认路由）
+#                     + 该子网补 local 表回程路由（否则 Android fwmark 规则把
+#                     回程包导向 wlan0，管理通道不通）
+#   fingerprint（exec）: 主 netns 内对齐真机网络指纹：
+#                       net2 网卡（MAC 52:54:00:12:34:58）改名 ccmni2（mtu 1400）；
+#                       建 dummy0、dummy ccmni0（mtu 1400 + 240e::/64 IPv6）并 up；
+#                       补 ccmni1/3..20 dummy 占位（DOWN/mtu1500），凑齐真机
+#                       ccmni0..ccmni20 共 21 个数据口
+set -eu
+case "${1:-}" in
+setup)
+    /system/bin/mkdir -p -m 0700 /mnt/run
+    /system/bin/ln -sf /proc/1/ns/net /mnt/run/adb_net
+    ;;
+configure)
+    /system/bin/ip link set lo up
+    # net0 没有显式 mac=，拿的是 QEMU 首块网卡的默认 MAC 52:54:00:12:34:56。
+    mgmt_src=""
+    for dev in /sys/class/net/*; do
+        name="${dev##*/}"
+        case "${name}" in mgmt0|ccmni0|ccmni2|lo|dummy0) continue ;; esac
+        if [ "$(cat "${dev}/address" 2>/dev/null)" = "52:54:00:12:34:56" ]; then
+            mgmt_src="${name}"
+            break
+        fi
+    done
+    if [ -n "${mgmt_src}" ]; then
+        /system/bin/ip link set "${mgmt_src}" down
+        /system/bin/ip link set "${mgmt_src}" name mgmt0
+    fi
+    /system/bin/ip link set mgmt0 up
+    /system/bin/ip addr replace 10.0.2.15/24 dev mgmt0
+    # 回程路由必须落在内核自管的 local 表（规则 0 最先匹配）：Android 的 fwmark
+    # 规则把无 mark 的本地出包统一导向默认网络表（`31000: from all fwmark 0x0/0xffff
+    # iif lo lookup wlan0`），目标 10.0.2.0/24 的包会从 wlan0 出去、回不到 SLIRP
+    # —— 表现为宿主 adb 一直 offline、guest 侧连接停在 SYN_RECV。不能用
+    # `ip rule add ... pref 15000`：开机过程中会被 netd 重刷规则清掉；local 表由
+    # 内核维护，实测 wifi/蜂窝抖动均存活。幂等：先删再加。
+    /system/bin/ip route del 10.0.2.0/24 dev mgmt0 table local 2>/dev/null || true
+    /system/bin/ip route add 10.0.2.0/24 dev mgmt0 table local
+    ;;
+fingerprint)
+    # 1) net2 真网卡（MAC 52:54:00:12:34:58）改名 ccmni2，mtu 1400 对齐 gold；
+    #    modem DataCall 报的接口名即 ccmni2，netd 配置的就是这张真实承载网卡。
+    ccmni_src=""
+    for dev in /sys/class/net/*; do
+        name="${dev##*/}"
+        case "${name}" in ccmni2|mgmt0|lo|dummy0) continue ;; esac
+        if [ "$(cat "${dev}/address" 2>/dev/null)" = "52:54:00:12:34:58" ]; then
+            ccmni_src="${name}"
+            break
+        fi
+    done
+    if [ -n "${ccmni_src}" ]; then
+        /system/bin/ip link set "${ccmni_src}" down
+        /system/bin/ip link set "${ccmni_src}" name ccmni2
+    fi
+    /system/bin/ip link set ccmni2 mtu 1400 up
+    # 2) dummy0：gold 常驻，up 后自带 fe80 link-local
+    if [ ! -d /sys/class/net/dummy0 ]; then
+        /system/bin/ip link add dummy0 type dummy
+    fi
+    /system/bin/ip link set dummy0 up
+    # 3) ccmni0：gold 的 IPv6 蜂窝数据口（dummy 指纹，240e::/64 为中国移动段）
+    if [ ! -d /sys/class/net/ccmni0 ]; then
+        /system/bin/ip link add ccmni0 type dummy
+    fi
+    /system/bin/ip link set ccmni0 mtu 1400 up
+    /system/bin/ip -6 addr replace 240e:573:ec0:1345:18d1:1082:f180:ed50/64 dev ccmni0 || true
+    # 4) ccmni1 / ccmni3..ccmni20：gold 的 MTK 数据口全集（真机 ip link 可见
+    #    ccmni0..ccmni20 共 21 个）。ccmni2 是上面改名的真实承载网卡，跳过；
+    #    其余按 gold 造 dummy 占位：默认 DOWN、mtu 1500、NOARP（gold 数据未激活
+    #    时的形态）。幂等：已存在则跳过。
+    index=1
+    while [ "${index}" -le 20 ]; do
+        if [ "${index}" != "2" ] && [ ! -d "/sys/class/net/ccmni${index}" ]; then
+            /system/bin/ip link add "ccmni${index}" type dummy
+        fi
+        index=$((index + 1))
+    done
+    ;;
+*)
+    exit 2
+    ;;
+esac

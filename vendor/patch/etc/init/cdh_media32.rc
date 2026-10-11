@@ -1,0 +1,24 @@
+# 官方 oriole（A16）的 /system/bin/mediaserver 与 /system/bin/drmserver 是 **ARM 32 位
+# ELF**（实测 ELFCLASS32；官方 /system/lib64 里没有 libmediaplayerservice.so——Google
+# 在这台机器上只发 32 位 media server 栈）。Apple Silicon HVF 客机没有 AArch32 执行状态，
+# init 于是进入 fork+exec 失败循环：实测开机 2400s 内各 101 次
+# `init: cannot execv('/system/bin/{mediaserver,drmserver}') … Exec format error`
+# （~5 次/秒），把 load 顶到 22、PSI cpu some avg10 22%（servicemanager 20% CPU、
+# init 10% CPU、guest logcat 36% CPU），表现为**客机操作整体卡死**；
+# 手动 `stop media; stop drm` 后 load 立刻回落到 0.75、PSI 归零。
+#
+# 两条"看起来更干净"的路都被 init 的 Treble 边界检查堵死（实测 dmesg）：
+#   1. vendor rc 里用 `service … override` 覆盖系统服务定义：
+#      `service 'media' overrides another service across the treble boundary.` → 定义丢弃；
+#   2. vendor rc 里 `on property:init.svc.media=restarting`（想第一时间掐掉重启循环）：
+#      `ParseTriggers() failed: unexported property trigger found: init.svc.media` → 触发器丢弃。
+# 属性触发只能用 exported 属性，`sys.boot_completed` 可用（同树 cph_disable_provision.rc
+# 的 boot_completed 动作实测在 46s 执行），故这里退而求其次：开机完成即把两个服务停成
+# stopped（SVC_DISABLED，class_start 不再拉起），把风暴限制在开机窗口内；开机窗口本身的
+# 消除靠内核侧把两个官方 rc 重定向到 /dev/null（fs/namei.c CDH 路径重定向表），使 init
+# 根本不定义这两个服务。**官方 /system 分区零改动。**
+# 代价：media.player / drmserver 不存在（MediaPlayer、Widevine 播放不可用，属平台限制），
+# SystemUI/system_server/MediaProvider 对 media 的 binder 等待仍在，实测不足以拖死 UI。
+on property:sys.boot_completed=1
+    stop media
+    stop drm

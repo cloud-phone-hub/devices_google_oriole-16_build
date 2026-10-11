@@ -1,0 +1,30 @@
+{
+  "schema": "android.hardware.security.keymint.v1",
+  "device": "note13-5g",
+  "androidMajor": 15,
+  "channel": "/dev/hvc3",
+  "binary": "android.hardware.security.keymint-service",
+  "initService": "vendor.keymint-default",
+  "interfaces": {
+    "keymint": [
+      "android.hardware.security.keymint.IKeyMintDevice/default",
+      "android.hardware.security.keymint.IRemotelyProvisionedComponent/default"
+    ],
+    "secureclock": [
+      "android.hardware.security.secureclock.ISecureClock/default"
+    ],
+    "sharedsecret": [
+      "android.hardware.security.sharedsecret.ISharedSecret/default"
+    ]
+  },
+  "aidlSnapshots": [
+    {"dir": "keymint", "package": "android.hardware.security.keymint", "version": 3},
+    {"dir": "rkp", "package": "android.hardware.security.rkp", "version": 3},
+    {"dir": "secureclock", "package": "android.hardware.security.secureclock", "version": 1},
+    {"dir": "sharedsecret", "package": "android.hardware.security.sharedsecret", "version": 1}
+  ],
+  "runtimeLibraries": [
+    "libc++.so", "libbase.so", "libbinder_ndk.so", "libcrypto.so",
+    "libkeymaster_messages.so", "liblog.so"
+  ]
+}

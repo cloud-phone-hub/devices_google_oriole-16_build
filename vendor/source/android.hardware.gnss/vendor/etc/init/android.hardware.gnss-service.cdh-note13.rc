@@ -1,0 +1,19 @@
+# note13-5G-15 自研 gnss HAL（虚拟 HAL）。
+#
+# lineage 底座没有 GNSS HAL：vendor VINTF 未声明 android.hardware.gnss.IGnss，
+# GnssLocationProvider 因此不创建（LocationManager 里没有 gps provider）。
+# 本服务接管 android.hardware.gnss.IGnss/default 及其全部扩展子接口，按真机
+# （MTK MNLD）的 systemInfo/能力位与 config 默认 fix 上报；位置来源只有三处：
+# config 默认值、framework 的 injectLocation/injectBestLocation、控制文件
+# /data/vendor/gps/fix（本 rc 负责建目录，写入即强制下发一次 fix）。
+service vendor.cdh_note13_gnss /vendor/bin/hw/android.hardware.gnss-service.cdh-note13
+    class hal
+    user system
+    group system gps
+    seclabel u:r:hal_gnss_default:s0
+    interface aidl android.hardware.gnss.IGnss/default
+    disabled
+
+on post-fs-data
+    mkdir /data/vendor/gps 0770 system shell
+    start vendor.cdh_note13_gnss

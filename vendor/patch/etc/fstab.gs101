@@ -1,0 +1,79 @@
+# oriole-16 云机 fstab（对真机 Pixel6 /vendor/etc/fstab.gs101 的云机同步版）。
+#
+# 单一来源：本文件同时被 build-boot.py 读入、注入 boot ramdisk 的 first_stage fstab
+# （/first_stage_ramdisk/fstab.gs101），并经 vendor patch 树注入
+# /vendor/etc/fstab.gs101（二阶段 mount_all 读取）。真机同此——boot ramdisk 里的
+# fstab.gs101 就是 /vendor/etc/fstab.gs101 的完整副本。
+#
+# 与真机的对应关系：
+#   照真机：Super logical 分区、metadata、boot/vendor_boot。
+#   云机特化（真机行在云机不成立或不适用）：
+#     - 去掉真机 logical 行的 avb=/avb_keys= 标记：云机无 vbmeta* 分区，AVB 全程关闭
+#       （boot 日志 "AVB is not enabled, skip verity setup"）。
+#     - /data 在独立 virtio 盘（/dev/block/vdb），非真机 by-name/userdata。
+#     - persist/EFI/firmware 为 vfat（persist 必须 vfat：GRUB grubenv + android_theme 依赖）。
+#     - usb/sr 通配行保留 lineage 原写法。
+#   真机中云机不存在的 Pixel 物理分区（bootloader/radio/dtbo/ldfw/modem/tzsw/abl/
+#     bl1/bl2/bl31/gsa/pbl/pvmfw/vbmeta*/super_empty/xbl 等）不引入：云机 vda.gpt 只有
+#     11 个分区（EFI/super/misc/metadata/cache/boot/recovery/firmware/persist/BIOS/
+#     vendor_boot），这些条目必然挂载失败。
+#
+# 顺序要点（first stage 严格按本文件顺序串行挂载）：
+#   vdc 必须排在最前——vdc（patch.img）提供 /mnt/vendor 挂载点（真机该目录由
+#   first_stage_init 在 /mnt tmpfs 上建好，云机由 patch.img 骨架提供），供内核
+#   getname_flags 重定向 /vendor/X -> /mnt/vendor/X 使用。
+#
+# ⚠ 槽位命名：本文件沿用 CDH 约定的 slotselect，要求 super 内逻辑分区为 **槽位命名
+#   （system_a/vendor_a/...）**。本项目 oriole-16 的 super 目前是**非槽位命名**
+#   （pack_super 传的是裸名 system/vendor/...），若不改 super 命名，slotselect 会找不到
+#   目标而挂载失败——需把 pack_super 的分区名改为 <name>_a（对齐 note13 pack_super_v1）。
+
+# 云机特有：patch.img（vdc）= lineage vendor/vendor_dlkm 内容载体（内核 getname_flags
+# 重定向目标：/vendor/X -> /mnt/vendor/X）。
+/dev/block/vdc /mnt/vendor ext4 ro first_stage_mount
+
+# Super logical（云机 vda.super 的逻辑分区；AVB 关闭故无 avb= 标记）
+system /system erofs ro wait,slotselect,logical,first_stage_mount
+system /system ext4 ro wait,slotselect,logical,first_stage_mount
+system_ext /system_ext erofs ro wait,slotselect,logical,first_stage_mount
+system_ext /system_ext ext4 ro wait,slotselect,logical,first_stage_mount
+vendor /vendor erofs ro wait,slotselect,logical,first_stage_mount
+vendor /vendor ext4 ro wait,slotselect,logical,first_stage_mount
+product /product erofs ro wait,slotselect,logical,first_stage_mount
+product /product ext4 ro wait,slotselect,logical,first_stage_mount
+system_dlkm /system_dlkm erofs ro wait,slotselect,logical,first_stage_mount
+system_dlkm /system_dlkm ext4 ro wait,slotselect,logical,first_stage_mount
+vendor_dlkm /vendor_dlkm erofs ro wait,slotselect,logical,first_stage_mount
+vendor_dlkm /vendor_dlkm ext4 ro wait,slotselect,logical,first_stage_mount
+odm /odm erofs ro wait,slotselect,logical,first_stage_mount
+odm /odm ext4 ro wait,slotselect,logical,first_stage_mount
+
+# Metadata（真机基准）
+/dev/block/by-name/metadata /metadata ext4 noatime,nosuid,nodev,discard wait,check,formattable,first_stage_mount
+
+# 云机特有：/data 在独立 virtio 盘（vdb），非真机 by-name/userdata
+/dev/block/vdb /data ext4 nodev,noatime,nosuid,discard latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption,checkpoint=block
+/dev/block/vdb /data f2fs nodev,noatime,nosuid,discard,reserve_root=32768 latemount,check,quota,formattable,fileencryption,keydirectory=/metadata/vold/metadata_encryption,fscompress,checkpoint=fs
+
+# 云机特有挂载点（真机行在云机不成立：挂载点/文件系统不同）
+/dev/block/by-name/EFI /mnt/vendor/EFI vfat rw,discard,shortname=lower,uid=0,gid=0,dmask=007,fmask=117,context=u:object_r:efi_file:s0 nofail
+/dev/block/by-name/persist /mnt/vendor/persist vfat rw,sync,shortname=lower,uid=1000,gid=1000,dmask=007,fmask=117,context=u:object_r:persist_file:s0 formattable
+# context 标签必须是策略里真实存在的类型：底包 init.virt.rc 沿用了 Android 13 及
+# 以前的 firmware_file，该类型在 A14+ 平台策略里已被 vendor_firmware_file 取代、
+# 从未声明，security_context_str_to_sid 直接 EINVAL（-22），整行挂载失败。
+# 基座 device/virt/virt-common/sepolicy 为挂载点专门声明了 firmware_mnt_file
+# （init: dir mounton + filesystem mount/relabelfrom，kernel: 目录/文件读），
+# 且 vendor_file_contexts 已映射 /vendor/firmware_mnt(/.*)?，故用该标签。
+/dev/block/by-name/firmware /vendor/firmware_mnt vfat rw,shortname=lower,uid=0,gid=1000,dmask=007,fmask=117,context=u:object_r:firmware_mnt_file:s0 nofail
+share /mnt/vendor/shared virtiofs nosuid,nodev,noatime nofail
+share /mnt/vendor/shared 9p trans=virtio,version=9p2000.L,nosuid,nodev,noatime nofail
+/dev/block/by-name/misc /misc emmc defaults defaults
+/devices/*/block/sr* auto auto defaults voldmanaged=cdrom:auto
+/devices/*/usb* auto auto defaults voldmanaged=usb:auto
+
+# ZRAM
+/dev/block/zram0 none swap defaults zramsize=50%
+
+# Boot（真机基准）
+/dev/block/by-name/boot /boot emmc defaults first_stage_mount,nofail,slotselect
+/dev/block/by-name/vendor_boot /vendor_boot emmc defaults first_stage_mount,nofail,slotselect

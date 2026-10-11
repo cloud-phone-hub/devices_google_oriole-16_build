@@ -1,0 +1,13 @@
+<manifest version="1.0" type="device">
+  <!-- note13-5G-15 自研 camera HAL（虚拟 provider）：
+       lineage 底座没有 camera HAL，由本服务提供 ICameraProvider/internal/0，
+       CameraService 据此枚举虚拟摄像头（见 config/camera.json）。 -->
+  <hal format="aidl">
+    <name>android.hardware.camera.provider</name>
+    <version>3</version>
+    <interface>
+      <name>ICameraProvider</name>
+      <instance>internal/0</instance>
+    </interface>
+  </hal>
+</manifest>
